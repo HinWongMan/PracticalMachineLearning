@@ -1,0 +1,51 @@
+---
+title: "Human Activity Recognisation"
+author: "Wong Man Hin"
+date: "2015-12-25"
+output: html_document
+---
+##Introduction
+In this article, we attempted to build a classification model to recognise human activity through motion information gathered by devices, using random forest technique.
+
+##Data preparation
+Packages used in the analysis is imported.
+```{r cache=TRUE}
+library(dplyr)
+library(caret)
+```
+
+Data is loaded into R for further processing. Only readings of Eular Angles and readings from accelerometer, gyroscope and magnetometer of the 3 devices are used in the model training.
+
+```{r cache =TRUE}
+train <- read.csv("pml-training.csv", stringsAsFactors = FALSE)
+train_information <- select(train, matches("^roll|^pitch|^yaw|^gyros|^accel|^magnet|classe"))
+```
+
+Training dataset will be divided into 2 parts, 70% of the data will be training set, while the remaining 30% will be the testing set.
+
+```{r cache=TRUE}
+trainIndex <- createDataPartition(train_information$classe, p = 0.70,list=FALSE)
+training <- train_information[trainIndex,]
+validation <- train_information[-trainIndex,]
+```
+
+##Model training
+Caret package is in the model training process. Random forest method with number of tree = 100 is used as the training method. 3-fold cross validation is performed to reduce the probability of overfitting.
+```{r cache=TRUE}
+rf_model <- train(classe~., data = training, method = "rf", trcontrol = trainControl(method = "cv", number = 3),allowParallel = TRUE, ntree = 100)
+print(rf_model$finalModel)
+```
+
+From the final Model, we get a accuracy rate of `r (1-rf_model$finalModel$err.rate[nrow(rf_model$finalModel$err.rate),1])*100`%
+
+##Model testing
+After building a random forest model for the classification, the model is tested by the testing set.
+
+Model is used to perform the prediction of the testing set.
+```{r cache=TRUE}
+validation_prediction <- predict(rf_model, newdata = validation)
+confusionMatrix(validation_prediction,validation$classe)
+```
+
+
+Model is validated and comfortable to predict other cases. Out of sample error is expected to be 1%
